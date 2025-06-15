@@ -1,0 +1,56 @@
+name: Versioned Tagging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release-channel:
+        description: "Select the release channel to tag the image: 'alpha' for early development, 'beta' for testing."
+        default: "beta"
+        type: choice
+        options:
+          - alpha
+          - beta
+
+env:
+  main_version: "1.0.0"
+
+jobs:
+  tagging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create token
+        id: create_token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.WORKFLOW_APP_ID }}
+          private-key: ${{ secrets.WORKFLOW_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.create_token.outputs.token }}
+          ref: ${{ github.ref }}
+
+      - name: Generate version
+        id: generate_version
+        run: |
+          SUB_VERSION=$(date +'%Y%m%d%H%M%S')
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "version=${{ env.main_version }}-$SUB_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ env.main_version }}-${{ inputs.release-channel }}-$SUB_VERSION" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+      - name: Release version tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          TAG_NAME=${{ steps.generate_version.outputs.version }}
+          git tag -a $TAG_NAME -m "Release ${{ steps.generate_version.outputs.version }}"
+          git push https://x-access-token:${{ steps.create_token.outputs.token }}@github.com/${{ github.repository }}.git $TAG_NAME
+        shell: bash
