@@ -136,7 +136,7 @@ class CSVReader(BaseDataReader):
         has_unsupported_options = (
             "chunksize" in kwargs
             or "iterator" in kwargs
-            or ("nrows" in kwargs and kwargs.get("nrows") is not None)
+            or kwargs.get("nrows") is not None
             or kwargs.get("parse_dates")  # Has bugs with multiple date columns
             or kwargs.get("na_values")  # Has bugs with missing value handling
         )
